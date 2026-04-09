@@ -22,7 +22,8 @@ def invoke_scanner(account_id, external_id):
         response.raise_for_status() # 4xx, 5xx 에러 시 예외 발생
         return response.json()
     except Exception as e:
-        st.error(f"❌ Scan Failed: {str(e)}")
+        st.error("❌ 스캔 실행 중 알 수 없는 오류가 발생했습니다.")
+        print(f"[LOG] 내부 오류 발생: {str(e)}")
         return None
 
 # [추가됨] 표에 색상을 입히는 함수는 위쪽에 미리 정의해야 합니다!
