@@ -15,7 +15,7 @@ Resources:
     Properties:
       CodeUri: scanner_engine/
       Handler: app.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.14
       Architectures:
         - arm64
       # Policies 추가
