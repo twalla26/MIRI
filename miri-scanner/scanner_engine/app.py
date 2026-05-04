@@ -1,24 +1,47 @@
 import json
 import boto3
+import os
+from datetime import datetime
 
 from checks.s3 import run_all_s3_checks
 from checks.ec2 import run_all_ec2_checks
 from checks.iam import run_all_iam_checks
 
+DYNAMODB_TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME", "")
+
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table("miri")
+
 def lambda_handler(event, context):
 
     body = json.loads(event.get('body'))
+    user_id = body.get('user_id')
 
-    target_account_id = body.get('target_account_id')
-    external_id = body.get('external_id')
-
-    if not target_account_id or not external_id:
+    if not user_id:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": "target_account_id와 external_id가 필수입니다."})
+            "body": json.dumps({
+                "error": "user_id가 필요합니다."
+            })
         }
     
     try:
+        user_info = table.get_item(
+            Key={'PK': f'USER#{user_id}',
+                 'SK': 'METADATA'}
+        ).get('Item')
+    
+        if not user_info:
+            return {
+                "statusCode": 403,
+                "body": json.dumps({
+                    "error": "등록되지 않은 사용자입니다."
+                })
+            }
+
+        target_account_id = user_info.get('AccountID')
+        external_id = user_info.get('ExternalID')
+    
         # 권한 획득 및 클라이언트 생성
         target_session = get_assumed_session(target_account_id, external_id)
 
@@ -36,18 +59,36 @@ def lambda_handler(event, context):
         iam_findings = run_all_iam_checks(iam_client)
         findings.extend(iam_findings)
 
+        total = len(findings)
+        passed = sum(1 for f in findings if f.get("status") == "PASS")
+        failed = sum(1 for f in findings if f.get("status") == "FAIL")
+
         summary = {
-            "total_checks_evaluated": len(findings),
-            "passed_checks": sum(1 for f in findings if f.get("status") == "PASS"),
-            "failed_checks": sum(1 for f in findings if f.get("status") == "FAIL")
+            "total_checks_evaluated": total,
+            "passed_checks": passed,
+            "failed_checks": failed,
+            "score": int((passed / total) * 100) if total > 0 else 0
         }
+
+        timestamp = datetime.now().isoformat()
+        expires_at = int(datetime.now().timestamp()) + (90 * 24 * 60 * 60)
+
+        table.put_item(
+            Item={
+                'PK': f'USER#{user_id}',
+                'SK': f'SCAN#{timestamp}',
+                'AccountID': target_account_id,
+                'Summary': summary,
+                'Findings': findings,
+                'ExpiresAt': expires_at
+            }
+        )
 
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "account": target_account_id,
-                "summary": summary,
-                "findings": findings
+                "scan_id": f'SCAN#{timestamp}'
             }, default=str)
         }
     
