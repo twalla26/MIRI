@@ -2,8 +2,8 @@ from botocore.exceptions import ClientError
 
 def run(iam_client):
     finding = {
-        "check_id": "CIS-2.8",
-        "check_name": "IAM Password Policy Length & Complexity",
+        "check_id": "CIS-AWS-v7.0.0-2.8",
+        "check_name": "Ensure IAM password policy requires minimum length of 14 or greater (Automated)",
         "service": "IAM",
         "resource_type": "Account",
         "resource_id": "PasswordPolicy",

@@ -1,3 +1,4 @@
+from . import cis_3_1_1_deny_http_requests
 from . import cis_3_1_4_bpa
 
 def run_all_s3_checks(s3_client):
@@ -13,5 +14,9 @@ def run_all_s3_checks(s3_client):
         # Check 1: BPA 검사
         finding_bpa = cis_3_1_4_bpa.run(s3_client, bucket_name)
         findings.append(finding_bpa)
+        
+        # Check 2: HTTP 요청 거부 정책 검사
+        finding_deny_http = cis_3_1_1_deny_http_requests.run(s3_client, bucket_name)
+        findings.append(finding_deny_http)
 
     return findings

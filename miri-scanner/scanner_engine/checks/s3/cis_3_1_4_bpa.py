@@ -5,7 +5,7 @@ def run(s3_client, bucket_name):
     [CIS 3.1.4] S3 버킷에 모든 퍼블릭 액세스 차단(BPA)이 설정되어 있는지 점검합니다.
     """
     finding = {
-        "check_id": "CIS-3.1.4",
+        "check_id": "CIS-AWS-v7.0.0-3.1.4",
         "check_name": "S3 Bucket Public Access Block",
         "service": "S3",
         "resource_type": "Bucket",

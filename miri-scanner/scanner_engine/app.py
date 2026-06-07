@@ -6,6 +6,10 @@ from datetime import datetime
 from checks.s3 import run_all_s3_checks
 from checks.ec2 import run_all_ec2_checks
 from checks.iam import run_all_iam_checks
+from checks.rds import run_all_rds_checks
+from checks.cloudtrail import run_all_cloudtrail_checks
+from checks.vpc import run_all_vpc_checks
+from checks.isms_p_mapping import enrich
 
 DYNAMODB_TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME", "")
 
@@ -47,6 +51,10 @@ def lambda_handler(event, context):
 
         findings = []
 
+        iam_client = target_session.client('iam')
+        iam_findings = run_all_iam_checks(iam_client)
+        findings.extend(iam_findings)
+
         s3_client = target_session.client('s3')
         s3_findings = run_all_s3_checks(s3_client)
         findings.extend(s3_findings)
@@ -55,9 +63,21 @@ def lambda_handler(event, context):
         ec2_findings = run_all_ec2_checks(ec2_client)
         findings.extend(ec2_findings)
 
-        iam_client = target_session.client('iam')
-        iam_findings = run_all_iam_checks(iam_client)
-        findings.extend(iam_findings)
+        # RDS checks
+        rds_client = target_session.client('rds')
+        rds_findings = run_all_rds_checks(rds_client)
+        findings.extend(rds_findings)
+
+        # CloudTrail checks
+        cloudtrail_client = target_session.client('cloudtrail')
+        cloudtrail_findings = run_all_cloudtrail_checks(cloudtrail_client)
+        findings.extend(cloudtrail_findings)
+
+        # VPC checks (ec2_client 재사용)
+        vpc_findings = run_all_vpc_checks(ec2_client)
+        findings.extend(vpc_findings)
+
+        findings = enrich(findings)
 
         total = len(findings)
         passed = sum(1 for f in findings if f.get("status") == "PASS")

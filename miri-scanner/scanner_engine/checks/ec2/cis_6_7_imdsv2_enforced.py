@@ -1,8 +1,13 @@
 def run(instance):
     instance_id = instance['InstanceId']
+
+    # 종료된 인스턴스는 평가 대상 아님
+    if instance.get('State', {}).get('Name') == 'terminated':
+        return None
+
     finding = {
-        "check_id": "CIS-5.1",
-        "check_name": "EC2 Instance IMDSv2 Enforced",
+        "check_id": "CIS-AWS-v7.0.0-6.7",
+        "check_name": "Ensure that EC2 Metadata Service only allows IMDSv2",
         "service": "EC2",
         "resource_type": "Instance",
         "resource_id": instance_id,
@@ -10,17 +15,8 @@ def run(instance):
         "reason": "IMDSv2 is enforced (HttpTokens=required)"
     }
 
-    # 종료(Terminated)된 인스턴스는 스캔 패스
-    if instance.get('State', {}).get('Name') == 'terminated':
-        finding["status"] = "PASS"
-        finding["reason"] = "Instance is terminated"
-        return finding
-
-    metadata_options = instance.get('MetadataOptions', {})
-    
-    # HttpTokens가 'required'여야 IMDSv2가 강제된 것
-    if metadata_options.get('HttpTokens') != 'required':
+    if instance.get('MetadataOptions', {}).get('HttpTokens') != 'required':
         finding["status"] = "FAIL"
-        finding["reason"] = "IMDSv2 is not enforced. Vulnerable to SSRF."
+        finding["reason"] = "IMDSv2 is not enforced (HttpTokens != required). Vulnerable to SSRF."
 
     return finding

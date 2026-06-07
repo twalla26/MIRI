@@ -1,24 +1,25 @@
 from botocore.exceptions import ClientError
 
+
 def run(iam_client):
     finding = {
-        "check_id": "CIS-AWS-v7.0.0-2.5",
-        "check_name": "Root Account MFA Enabled",
+        "check_id": "CIS-AWS-v7.0.0-2.4",
+        "check_name": "Ensure no root account access key exists (Automated)",
         "service": "IAM",
         "resource_type": "Account",
         "resource_id": "Root",
         "status": "PASS",
-        "reason": "Root account has MFA enabled"
+        "reason": "Root account has no access keys"
     }
 
     try:
         summary = iam_client.get_account_summary()
-        mfa_enabled = summary.get('SummaryMap', {}).get('AccountMFAEnabled', 0)
-        
-        if mfa_enabled == 0:
+        access_keys_present = summary.get('SummaryMap', {}).get('AccountAccessKeysPresent', 0)
+
+        if access_keys_present != 0:
             finding["status"] = "FAIL"
-            finding["reason"] = "Root account does not have MFA enabled"
-            
+            finding["reason"] = "Root account has access keys present"
+
     except ClientError as e:
         finding["status"] = "ERROR"
         finding["reason"] = str(e)
